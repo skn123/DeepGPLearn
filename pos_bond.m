@@ -1,2 +1,2 @@
-function out=pos_bond(x,a)
-out = a./(1+100.*exp(-(10/a)*x));
+function out=pos_bond(x,A)
+out = A./(1+exp(-((x-0.5*A)*10/A)));

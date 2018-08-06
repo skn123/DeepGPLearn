@@ -39,7 +39,9 @@ if any(find(metho==[1,2]))
   [yv,ysd] = predict(GPM,xv);
 end
 if metho==3
-  theta=[-27.035541024693067;-0.428530372580549];
+  theta=[10.558888527436583;-0.204524413227546];
+  pos_bond(theta(1),300)
+  exp(theta(2))
   [yv,ysd] = my_fitrgp(xt,xv,tt,@kfcn,theta);
 end
 %% compare
