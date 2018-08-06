@@ -12,7 +12,7 @@ metho=3;
 % observation noise
 sigv=0;
 %% data
-M=100;
+M=10;
 xt=rand(M,1)*10;
 xt=sort(xt);
 tt=sin(3*xt)+randn(size(xt))*sigv;
@@ -39,7 +39,8 @@ if any(find(metho==[1,2]))
   [yv,ysd] = predict(GPM,xv);
 end
 if metho==3
-  theta=[10.558888527436583;-0.204524413227546];
+  %   theta=[10.558888527436583;-0.204524413227546];
+  theta=[1;-1];
   pos_bond(theta(1),300)
   exp(theta(2))
   [yv,ysd] = my_fitrgp(xt,xv,tt,@kfcn,theta);
@@ -51,7 +52,7 @@ rms(yv-tv)
 close all
 figure
 hold on
-plot(xv,tv,'*')
+plot(xt,tt,'*')
 plot(xv,yv)
 plot(xv,yv+ysd)
 plot(xv,yv-ysd)
