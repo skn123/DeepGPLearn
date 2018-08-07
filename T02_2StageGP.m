@@ -7,17 +7,7 @@ close all
 clc
 %% display controls
 % display the histogram of sampled z(s)
-show_hist=0;
-% display ESS during tempering process
-show_ESS=1;
-%% method controls
-% particle propose method
-% 1: by gaussian approximation
-RS_metho=2;
-% Weight tempering method
-% 1: Guided by ESS
-% 2: linear^a
-Temp_metho=2;
+show_hist=1;
 %% parameters
 N=10;% number of training data
 M=1000;% number of particles in anealing sampling (AS)
@@ -45,69 +35,33 @@ parfor m=1:M
   z(:,m) = z_current; % Samples
   logW(m) = logmvnpdf(tt,tt*0,K2); % log weights
 end
-%% AS
-for iAS=1:nAS
-  % get tempered weights
-  if Temp_metho==1
-    [w_tempered,temper]=temper_weights(logW);
-  end
-  if Temp_metho==2
-    temper=(iAS/nAS)^3;
-    logW=logW*temper;
-    logW=logW-max(logW);
-    w_tempered=exp(logW);
-    w_tempered=w_tempered/sum(w_tempered);
-  end
-  if show_ESS
-    disp("tempered_ESS")
-    ESS(w_tempered)
-  end
-  % use the tempered posterior_{t-1} as prior_{t}
-  % Sample from prior
-  if RS_metho == 1
-    % find MVGaussian Approximation
-    z_RSed=resample(z,w_tempered); % z_RSed ~ tempered posterior_{t-1}
-    GMModel = fitgmdist(z_RSed',1); % approximated tempered posterior_{t-1}
-    z=random(GMModel,M);
-    pz=pdf(GMModel,z);
-    z=z';
-  end
-  if RS_metho == 2
-    [z,ind]=resample(z,w_tempered); % z ~ tempered posterior_{t-1}
-    pz=w_tempered(ind);
-    z=z+2*(rand(size(z))-0.5)*1;
-  end
-  % get untempered weights from 2 stage target distribution
-  % first stage
-  logW1=logmvnpdf(z,xt*0,K1);
-  % second stage
-  logW2=zeros(N,1);
-  parfor m=1:M
-    z_current=z(:,m);
-    K2=kfcn(z_current,z_current,para2);
-    K2=0.5*(K2+K2');
-    K2=K2+eye(length(xt))*1e-5;
-    logW2(m) = logmvnpdf(tt,tt*0,K2);
-  end
-  % together
-  logW=logW1+logW2-log(pz);
-  w=logw2w(logW);
-  if show_ESS
-    disp("ESS")
-    ESS(w)
-  end
-  % if the particle group ESS is large enough
-  if ESS(w)>0.5
-    break
-  end
-end
+%% PMC
+log_target_now=@(z)log_target(xt,z,tt,K1,para2); % log target
+% Necessities
+dim=N; % dimension of the desired target
+Mpmc=250; Npmc=4; % number of proposals and samples/proposal
+Ipmc=2*10^5/(Mpmc*Npmc); % total number of iterations
+
+% Optional initializations
+Dpmc=100; % number of partial mixtures
+
+% Run PMC
+tic
+[X,W,Z]=pmc(log_target_now,dim,...
+  'NumProposals',Mpmc,...
+  'NumSamples',Npmc,...
+  'NumIterations',Ipmc,...
+  'NumMixtures',Dpmc,...
+  'WeightingScheme','partialDM',...
+  'ResamplingScheme','global');
+W_tilde=W./sum(W);
+toc
 %% down sample
 NewM=100;
-ind=datasample(1:M,NewM,'Replace',false,'Weights',w);
-z=z(:,ind);
-w=w(ind);
-w=w/sum(w);
+posterior_samples=datasample(X,NewM,'Weights',W_tilde);
+z=posterior_samples';
 M=NewM;
+w=ones([M,1])/M;
 %% visualization of the distribution of z
 if show_hist
   D=5;
