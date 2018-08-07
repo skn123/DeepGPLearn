@@ -35,15 +35,31 @@ parfor m=1:M
   z(:,m) = z_current; % Samples
   logW(m) = logmvnpdf(tt,tt*0,K2); % log weights
 end
+if show_hist
+  figure
+  w=logw2w(logW);
+  z=resample(z,w);
+  D=min(5,N);
+  for i=1:D
+    for j=1:D
+      subplot(D,D,(j-1)*D+i)
+      if i==j
+        hist(z(i,:),100)
+      else
+        plot(z(i,:),z(j,:),'.')
+      end
+    end
+  end
+end
 %% PMC
 log_target_now=@(z)log_target(xt,z,tt,K1,para2); % log target
 % Necessities
 dim=N; % dimension of the desired target
-Mpmc=250; Npmc=4; % number of proposals and samples/proposal
-Ipmc=2*10^5/(Mpmc*Npmc); % total number of iterations
+Mpmc=1000; Npmc=10;% number of proposals and samples/proposal
+Ipmc=2*10^6/(Mpmc*Npmc); % total number of iterations
 
 % Optional initializations
-Dpmc=100; % number of partial mixtures
+Dpmc=10; % number of partial mixtures
 
 % Run PMC
 tic
@@ -56,15 +72,12 @@ tic
   'ResamplingScheme','global');
 W_tilde=W./sum(W);
 toc
-%% down sample
-NewM=100;
-posterior_samples=datasample(X,NewM,'Weights',W_tilde);
-z=posterior_samples';
-M=NewM;
-w=ones([M,1])/M;
 %% visualization of the distribution of z
 if show_hist
-  D=5;
+  figure
+  posterior_samples=datasample(X,10000,'Weights',W_tilde);
+  z=posterior_samples';
+  D=min(5,N);
   for i=1:D
     for j=1:D
       subplot(D,D,(j-1)*D+i)
@@ -76,6 +89,12 @@ if show_hist
     end
   end
 end
+%% down sample
+NewM=100;
+posterior_samples=datasample(X,NewM,'Weights',W_tilde);
+z=posterior_samples';
+M=NewM;
+w=ones([M,1])/M;
 %% test data
 xv=-5:0.01:15;
 xv=sort(xv(:));
