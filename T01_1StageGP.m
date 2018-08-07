@@ -8,7 +8,6 @@ clc
 % 2 optimize kernel by 'lbfgs'
 % 3 no optimzation on parameter
 metho=3;
-
 % observation noise
 sigv=0;
 %% data
@@ -40,7 +39,7 @@ if any(find(metho==[1,2]))
 end
 if metho==3
   %   theta=[10.558888527436583;-0.204524413227546];
-  theta=[1;-1];
+  theta=[1;0];
   pos_bond(theta(1),300)
   exp(theta(2))
   [yv,ysd] = my_fitrgp(xt,xv,tt,@kfcn,theta);
@@ -54,6 +53,8 @@ figure
 hold on
 plot(xt,tt,'*')
 plot(xv,yv)
-plot(xv,yv+ysd)
-plot(xv,yv-ysd)
+% make closed patch
+px=[xv;flip(xv)]; 
+py=[yv+ysd; flip(yv-ysd)];
+patch(px,py,1,'FaceColor','black','FaceAlpha',.2,'EdgeColor','none');
 
