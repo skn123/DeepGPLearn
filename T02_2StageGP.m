@@ -1,6 +1,7 @@
 %% 2 stage GP with system built in function
 %% This file just try to sample from z, currently no optimization on paras
-% running and the result is reasonable
+% running
+% but AS part is not resonable
 clear
 close all
 clc
@@ -12,15 +13,15 @@ show_ESS=1;
 %% method controls
 % particle propose method
 % 1: by gaussian approximation
-RS_metho=1;
+RS_metho=2;
 % Weight tempering method
 % 1: Guided by ESS
 % 2: linear^a
-Temp_metho=1;
+Temp_metho=2;
 %% parameters
-N=30;% number of training data
+N=10;% number of training data
 M=1000;% number of particles in anealing sampling (AS)
-nAS=200;% max number of cycles in AS
+nAS=1000;% max number of cycles in AS
 para1=[1,0];% initial parameter
 para2=[1,0];% initial parameter
 %% training data
@@ -61,15 +62,25 @@ for iAS=1:nAS
     disp("tempered_ESS")
     ESS(w_tempered)
   end
+  % use the tempered posterior_{t-1} as prior_{t}
   % Sample from prior
   if RS_metho == 1
     % find MVGaussian Approximation
-    z_RSed=resample(z,w_tempered);
-    GMModel = fitgmdist(z_RSed',1);
+    z_RSed=resample(z,w_tempered); % z_RSed ~ tempered posterior_{t-1}
+    GMModel = fitgmdist(z_RSed',1); % approximated tempered posterior_{t-1}
     z=random(GMModel,M);
+    pz=pdf(GMModel,z);
     z=z';
   end
+  if RS_metho == 2
+    [z,ind]=resample(z,w_tempered); % z ~ tempered posterior_{t-1}
+    pz=w_tempered(ind);
+    z=z+2*(rand(size(z))-0.5)*1;
+  end
+  % get untempered weights from 2 stage target distribution
+  % first stage
   logW1=logmvnpdf(z,xt*0,K1);
+  % second stage
   logW2=zeros(N,1);
   parfor m=1:M
     z_current=z(:,m);
@@ -78,13 +89,14 @@ for iAS=1:nAS
     K2=K2+eye(length(xt))*1e-5;
     logW2(m) = logmvnpdf(tt,tt*0,K2);
   end
-  logW=logW1+logW2;
-  % get real weights
+  % together
+  logW=logW1+logW2-log(pz);
   w=logw2w(logW);
   if show_ESS
     disp("ESS")
     ESS(w)
   end
+  % if the particle group ESS is large enough
   if ESS(w)>0.5
     break
   end
