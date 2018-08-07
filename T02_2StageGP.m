@@ -45,10 +45,23 @@ parfor m=1:M
   logW(m) = logmvnpdf(tt,tt*0,K2); % log weights
 end
 %% AS
-% initialize the tempered weights for the first gaussian approximation
-w_tempered=temper_weights(logW);
 for iAS=1:nAS
-  % Sample from proposal
+  % get tempered weights
+  if Temp_metho==1
+    [w_tempered,temper]=temper_weights(logW);
+  end
+  if Temp_metho==2
+    temper=(iAS/nAS)^3;
+    logW=logW*temper;
+    logW=logW-max(logW);
+    w_tempered=exp(logW);
+    w_tempered=w_tempered/sum(w_tempered);
+  end
+  if show_ESS
+    disp("tempered_ESS")
+    ESS(w_tempered)
+  end
+  % Sample from prior
   if RS_metho == 1
     % find MVGaussian Approximation
     z_RSed=resample(z,w_tempered);
@@ -67,21 +80,8 @@ for iAS=1:nAS
   end
   logW=logW1+logW2;
   % get real weights
-  w=logw2w(logW); 
-  % get tempered weights
-  if Temp_metho==1
-    [w_tempered,temper]=temper_weights(logW);
-  end
-  if Temp_metho==2
-    temper=(iAS/nAS)^3;
-    logW=logW*temper;
-    logW=logW-max(logW);
-    w_tempered=exp(logW);
-    w_tempered=w_tempered/sum(w_tempered);
-  end
+  w=logw2w(logW);
   if show_ESS
-    disp("tempered_ESS")
-    ESS(w_tempered)
     disp("ESS")
     ESS(w)
   end
