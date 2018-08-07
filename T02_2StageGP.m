@@ -2,6 +2,7 @@
 %% This file just try to sample from z, currently no optimization on paras
 % running
 % but AS part is not resonable
+% new branch
 clear
 close all
 clc
