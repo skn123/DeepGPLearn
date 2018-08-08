@@ -9,33 +9,19 @@ show_hist=1;
 % display ESS during tempering process
 show_ESS=1;
 %% parameters
-nTr=10;% number of training data
-nSample=1000;% number of particles in anealing sampling (AS)
-nAS=200;% max number of cycles in AS
+nTr=3;% number of training data
+nSample=200;% number of particles in anealing sampling (AS)
+nAS=1000;% max number of cycles in AS
+nMetro=10; % number of metropolis steps at each temperature
 para1=[1,2];% initial parameter
 para2=[1,2];% initial parameter
 %% method controls
-% particle propose method
-% 1: by gaussian mixture approximation
-% 2: by uniform noise, maxNoiseSize*flip(linear).^coolDown_speed
-% 3: Metropolis random walk
-Prop_metho = 3;
-
-if Prop_metho == 1
-  nGMcomponent = 5;
-end
-if any(Prop_metho == [2,3])
-  coolDown_speed = nAS*3;
-  maxNoiseSize = 1;
-  noiseSize_list = maxNoiseSize*exp(-(0:(nAS-1))/(coolDown_speed/5));
-  %   noiseSize_list=noiseSize_list-noiseSize_list(end);
-  %   noiseSize_list=noiseSize_list/noiseSize_list(1);
-  figure
-  plot(noiseSize_list)
-end
-if Prop_metho == 3
-  nMetro=200;
-end
+% Metropolis noise and its cooling down
+coolDown_speed = nAS*1000;
+maxNoiseSize = 0.5;
+noiseSize_list = maxNoiseSize*exp(-(0:(nAS-1))/(coolDown_speed/5));
+figure
+plot(noiseSize_list)
 
 % Weight tempering method
 % 1: Guided by ESS
@@ -82,7 +68,7 @@ for iAS=1:nAS
   % find untempered weights
   w=logw2w(logW);
   message=[message,'ESS: ',num2str(ESS(w)),newline];
-  % find tempered weights
+  % find temper difference from last one
   if Temp_metho == 1
     [~,temper_diff]=temper_weights(logW);
     if (temper + temper_diff) >1
@@ -91,7 +77,6 @@ for iAS=1:nAS
       w_tempered = logw2w(logW*temper_diff);
       temper = temper + temper_diff;
     end
-    clear temper_diff
   end
   if Temp_metho == 2
     temper = temper + temperDiff_list(iAS);
@@ -100,46 +85,29 @@ for iAS=1:nAS
   message=[message,'temper: ',num2str(temper),newline];
   message=[message,'tempered_ESS: ',num2str(ESS(w_tempered)),newline];
   if any([iAS==nAS,AS_end_flag])% if last iteration or ended by temperature = 1
-    w_tempered = logw2w(logW*(1-temper));
-    z = resample(z,w_tempered);
     if show_ESS
       clc
       message
     end
     break % skip propose new particles
   end
-  % resample to get equal weights
-  z = resample(z,w_tempered); % z ~ prior * tempered likelihood_{t-1}
-  
-  if Prop_metho == 1
-    % gaussian mixture approximation
-    GMModel = fitgmdist(z',nGMcomponent);
-    z=random(GMModel,nSample)';
-    clear GMModel
-  end
-  if Prop_metho == 2
-    % perturb by uniform weights
-    z = z + 2*(rand(size(z))-0.5) * noiseSize_list(iAS);
-  end
-  if Prop_metho == 3
-    % Metropolis random walk
-    likelihood=@(z)log_target(xt,z,tt,K1,para2,temper);
-    for iMetro = 1:nMetro
-      zp = z + randn(size(z)) * noiseSize_list(iAS);
-      alpha=exp(likelihood(zp)-likelihood(z));
-      u=rand(size(alpha));
-      pick=u<alpha;
-      z(:,pick)=zp(:,pick);
-    end
-    message=[message,'picked: ',num2str(sum(pick)),newline];
-  end
-  if show_ESS
-    clc
-    message
+  % Metropolis random walk
+  likelihood=@(z)log_target(xt,z,tt,K1,para2,temper);
+  for iMetro = 1:nMetro
+    zp = z + randn(size(z)) * noiseSize_list(iAS);
+    alpha=exp(likelihood(zp)-likelihood(z));
+    u=rand(size(alpha));
+    pick=u<alpha;
+    z(:,pick)=zp(:,pick);
     if show_hist
       mvhist(z,5)
     end
-    pause(0.001)
+    if show_ESS
+      clc
+      message
+      pause(0.001)
+    end
+    message=[message,'picked: ',num2str(sum(pick)),newline];
   end
 end
 clear iAS
