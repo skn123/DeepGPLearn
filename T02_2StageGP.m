@@ -7,9 +7,9 @@ clc
 % display the histogram of sampled z(s)
 show_hist=0;
 % display ESS during tempering process
-show_info=1;
+show_info=0;
 %% parameters
-nTr=5;% number of training data
+nTr=10;% number of training data
 nSample=1000;% number of particles in anealing sampling (AS)
 nAS=1000000;% max number of cycles in AS
 nMetro=1; % number of metropolis steps at each temperature
@@ -35,7 +35,7 @@ Temp_metho=1;
 if Temp_metho == 1
   % bigger bounds gives smoother transition and thus better fit
   % smaller bound gives fister convergence
-  temper_bounds=[0.8,1];
+  temper_bounds=[0.5,1];
 end
 if Temp_metho == 2
   temper_speed = 2;
@@ -82,7 +82,7 @@ for iAS=1:nAS
   logLh=@(z)log_target(xt,z,tt,K1,para2,temper);
   ESS_now=ESS(w_tempered);
   if temper == 1
-    nMetro=50;
+    nMetro=200;
   end
   for iMetro = 1:nMetro
     if Cool_metho == 1
@@ -148,10 +148,15 @@ end
 clear nVal
 %% disp
 yPred=yVal*ones([nSample,1])/nSample;
+ySD=sqrt(var(yVal,1,2));
+
 figure
 hold on
 plot(xVal,yPred)
 plot(xt,tt,'*')
+px=[xVal;flip(xVal)]; 
+py=[yPred+ySD; flip(yPred-ySD)];
+patch(px,py,1,'FaceColor','black','FaceAlpha',.2,'EdgeColor','none');
 title('prediction')
 
 figure
