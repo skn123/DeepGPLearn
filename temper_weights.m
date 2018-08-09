@@ -1,16 +1,16 @@
-function [w,temper]=temper_weights(logW,bounds)
+function [w_tempered,temper]=temper_weights(logW,bounds)
 % find a reasonalable tempered weigth from log weights
 % guided by ESS
 temper=1;
 logW=logW-max(logW);
 for trial = 1:1000
-  w=exp(logW*temper);
-  w=w/sum(w);
-  if ESS(w)<min(bounds(:))
+  w_tempered=exp(logW*temper);
+  w_tempered=w_tempered/sum(w_tempered);
+  if ESS(w_tempered)<min(bounds(:))
     temper=temper/1.1;
     continue
   end
-  if ESS(w)>max(bounds(:))
+  if ESS(w_tempered)>max(bounds(:))
     temper=temper*1.05;
     continue
   end

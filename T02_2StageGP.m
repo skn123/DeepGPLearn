@@ -7,11 +7,12 @@ clc
 % display the histogram of sampled z(s)
 show_hist=0;
 % display ESS during tempering process
-show_ESS=1;
+show_info=1;
 %% parameters
-nTr=3;% number of training data
-nSample=100;% number of particles in anealing sampling (AS)
-nAS=1000;% max number of cycles in AS
+nTr=5;% number of training data
+nSample=1000;% number of particles in anealing sampling (AS)
+nAS=1000000;% max number of cycles in AS
+nMetro=1; % number of metropolis steps at each temperature
 para1=[1,2];% initial parameter
 para2=[1,2];% initial parameter
 %% method controls
@@ -24,16 +25,6 @@ if Cool_metho == 1
   maxNoiseSize = 0.5;
   noiseSize_list = maxNoiseSize*exp(-(0:(nAS-1))/(coolDown_speed/5));
 end
-
-% Adaptive Metropolis cycles
-adaptive_nMetro = 1;
-if adaptive_nMetro
-  ESS_th=0.5;
-  nMetro=30; % max number of metropolis steps
-else
-  nMetro=10; % number of metropolis steps at each temperature
-end
-
 if Cool_metho == 2
   noiseSize=1;
 end
@@ -44,11 +35,12 @@ Temp_metho=1;
 if Temp_metho == 1
   % bigger bounds gives smoother transition and thus better fit
   % smaller bound gives fister convergence
-  temper_bounds=[0.9,1];
+  temper_bounds=[0.8,1];
 end
 if Temp_metho == 2
   temper_speed = 2;
   temper_list=((1:nAS)/nAS).^temper_speed;
+  temper_diff_list=diff([0,temper_list]);
 end
 %% training data
 xt=rand(nTr,1)*10;
@@ -60,15 +52,9 @@ K1=K1+eye(length(xt))*1e-5;
 [E,~] = chol(K1);
 u=randn(nTr,nSample);
 z=E*u;
-ESS_start=ESS(logw2w(log_target(xt,z,tt,K1,para2,0)))
-pause
-if adaptive_nMetro
-  ESS_th=ESS_start;
-end
 clear E u
 %% AS
 temper=0;
-AS_end_flag=0;
 if show_hist==1
   figure
 end
@@ -79,9 +65,8 @@ for iAS=1:nAS
   w=logw2w(logW);
   % find temper difference from last one
   if Temp_metho == 1
-    [~,temper_diff]=temper_weights(logW,temper_bounds);
+    [w_tempered,temper_diff]=temper_weights(logW,temper_bounds);
     if (temper + temper_diff) >1
-      AS_end_flag=1;
       temper_diff = 1 - temper;
       temper = 1;
     else
@@ -90,10 +75,15 @@ for iAS=1:nAS
     temper_list(iAS)=temper;
   end
   if Temp_metho == 2
-    temper = temper_list(iAS);
+    temper_diff = temper_diff_list(iAS);
+    temper = temper+temper_diff;
   end
   % Metropolis random walk
   logLh=@(z)log_target(xt,z,tt,K1,para2,temper);
+  ESS_now=ESS(w_tempered);
+  if temper == 1
+    nMetro=50;
+  end
   for iMetro = 1:nMetro
     if Cool_metho == 1
       noiseSize = noiseSize_list(iAS);
@@ -104,16 +94,16 @@ for iAS=1:nAS
     pick=u<alpha;
     z(:,pick)=zp(:,pick);
     
-    ESS_now=ESS(logw2w(logLh(z)));
-    if show_ESS
+    if show_info
       clc
-      message=['iAS: ',num2str(iAS),newline];
-      message=[message,'iMetro: ',num2str(iMetro),newline];
-      message=[message,'temper: ',num2str(temper),newline];
-      message=[message,'ESS_now: ',num2str(ESS_now),newline];
-      message=[message,'picked: ',num2str(sum(pick)),newline];
-      message=[message,'noiseSize: ',num2str(noiseSize),newline];
-      message
+      info=['iAS: ',num2str(iAS),newline];
+      info=[info,'iMetro: ',num2str(iMetro),newline];
+      info=[info,'temper: ',num2str(temper),newline];
+      info=[info,'temper_diff: ',num2str(temper_diff),newline];
+      info=[info,'ESS_now: ',num2str(ESS_now),newline];
+      info=[info,'picked: ',num2str(sum(pick)),newline];
+      info=[info,'noiseSize: ',num2str(noiseSize),newline];
+      info
     end
     if show_hist
       mvhist(z,5)
@@ -123,18 +113,13 @@ for iAS=1:nAS
       if sum(pick(:))/length(pick(:)) < 0.1
         noiseSize=noiseSize*0.95;
       else
-        noiseSize=noiseSize*1.05;
+        noiseSize=noiseSize*2;
       end
       noiseSize_list(iAS)=noiseSize;
     end
-    if adaptive_nMetro
-      if all([ESS_now>ESS_th ,not(any([iAS==nAS,AS_end_flag]))])
-        break
-      end
-    end
   end
-  if any([iAS==nAS,AS_end_flag])% if last iteration or ended by temperature = 1
-    break % skip propose new particles
+  if temper == 1% if ended by temperature = 1
+    break
   end
 end
 clear iAS
