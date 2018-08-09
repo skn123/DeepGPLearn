@@ -3,76 +3,77 @@
 clear
 close all
 clc
-%% display controls
-% display the histogram of sampled z(s)
-show_hist=0;
-% display ESS during tempering process
-show_info=0;
 %% parameters
-nTr=2;% number of training data
-nSample=1000;% number of particles in anealing sampling (AS)
-nAS=1000000;% max number of cycles in AS
-nMetro=10; % number of metropolis steps at each temperature
-para1=[1,2];% initial parameter
-para2=[1,2];% initial parameter
+z_n=1000;% number of samples in anealing sampling (AS)
+AS_n=1000000;% max number of cycles in AS
+metro_n=10; % number of metropolis steps at each temperature
+para1=[1,0];% initial parameter
+para2=[1,0];% initial parameter
+[~,A,W]=kfcn(1,1,para1)
+[~,A,W]=kfcn(1,1,para2)
+clear A W
 temper_bounds=[0.5,1];
 % bigger bounds gives smoother transition and thus better fit
 % smaller bound gives fister convergence
 %% training data
-% xt=rand(nTr,1)*10;
-% xt=sort(xt);
-xt=(1:nTr);
-xt=xt(:);
-tt=sin(3*xt);
+if 0
+  % observation noise
+  train_sigv=0;
+  train_n=10;
+  train_x=rand(train_n,1)*10;
+  train_x=sort(train_x);
+  train_t=sin(3*train_x)+randn(size(train_x))*train_sigv;
+  val_x=-5:0.01:15;
+  val_x=sort(val_x(:));
+  val_t=sin(3*val_x);
+  save('data.mat')
+else
+  load('data.mat')
+end
 %% Sample from prior
-K1=kfcn(xt,xt,para1);
-K1=K1+eye(length(xt))*1e-5;
+K1=kfcn(train_x,train_x,para1);
+K1=K1+eye(length(train_x))*1e-5;
 [E,~] = chol(K1);
-u=randn(nTr,nSample);
+u=randn(train_n,z_n);
 z=E*u;
 clear E u
 %% AS
 disp('start code generation')
 tic
-codegen AnnealedSampling -args {xt,z,tt,K1,para2,1,1,temper_bounds}
+codegen AnnealedSampling -args {train_x,z,train_t,K1,para2,1,1,temper_bounds}
 toc
 disp('finish')
 
 disp('start Annealed Sampling')
 tic
-z = AnnealedSampling_mex(xt,z,tt,K1,para2,nMetro,nAS,temper_bounds);
+z = AnnealedSampling_mex(train_x,z,train_t,K1,para2,metro_n,AS_n,temper_bounds);
 toc
 disp('finish')
 %% display B4 downsampling
 figure
 mvhist(z,5)
-figure
-plotRealizations(xt,z)
 %% down sample
-NewM=100;
-if nSample>( NewM)
-  ind=datasample(1:nSample,NewM,'Replace',false);
+sample_n_new=100;
+if z_n>( sample_n_new)
+  ind=datasample(1:z_n,sample_n_new,'Replace',false);
   z=z(:,ind);
-  nSample=NewM;
+  z_n=sample_n_new;
 end
-clear NewM ind
-%% test data
-xVal=-5:0.01:15;
-xVal=sort(xVal(:));
+clear sample_n_new ind
+%% save result
+timeMarker=datestr(datetime('now'),'yymmddHHMM');
+save(['TwoStageGP',timeMarker,'.mat'])
 %% predict
-nVal=length(xVal);
-yVal=zeros(nVal,nSample);
-parfor m=1:nSample
-  zVal = my_fitrgp(xt,xVal,z(:,m),@kfcn,para1);
-  yVal(:,m) = my_fitrgp(z(:,m),zVal,tt,@kfcn,para2);
+val_n=length(val_x);
+val_y=zeros(val_n,z_n);
+parfor m=1:z_n
+  val_z = my_fitrgp(train_x,val_x,z(:,m),@kfcn,para1);
+  val_y(:,m) = my_fitrgp(z(:,m),val_z,train_t,@kfcn,para2);
 end
 clear nVal
 %% disp
-yPred=yVal*ones([nSample,1])/nSample;
-ySD=sqrt(var(yVal,1,2));
-
 figure
-plot(xt,tt,'*')
+plot(train_x,train_t,'*')
 hold on
-plotRealizations(xVal,yVal)
+plotRealizations(val_x,val_y)
 title('prediction')

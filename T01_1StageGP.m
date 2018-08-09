@@ -3,60 +3,30 @@
 clear
 close all
 clc
-%% methods control
-% 1 optimize kernel by a system chosen method
-% 2 optimize kernel by 'lbfgs'
-% 3 no optimzation on parameter
-metho=3;
-% observation noise
-sigv=0;
 %% data
-M=5;
-% xt=rand(M,1)*10;
-% xt=sort(xt);
-xt=(1:M);
-xt=xt(:);
-tt=sin(3*xt)+randn(size(xt))*sigv;
-%% train
-parameter=[100,0];% initial parameter
-if metho==1
-  GPM = fitrgp(xt,tt,...
-    'KernelFunction',@kfcn,...
-    'KernelParameters',parameter,...
-    'OptimizeHyperparameters','auto');
+if 0
+  % observation noise
+  train_n=10;
+  train_x=rand(train_n,1)*10;
+  train_x=sort(train_x);
+  train_sigv=0;
+  train_t=sin(3*train_x)+randn(size(train_x))*train_sigv;
+  val_x=-5:0.01:15;
+  val_x=sort(val_x(:));
+  val_t=sin(3*val_x);
+  save('data.mat')
+else
+  load('data.mat')
 end
-if metho==2
-  GPM = fitrgp(xt,tt,...
-    'KernelFunction',@kfcn,...
-    'KernelParameters',parameter,...
-    'OptimizeHyperparameters','auto',...
-    'Optimizer','lbfgs');
-end
-%% test data
-xv=-5:0.01:15;
-xv=sort(xv(:));
-%% test
-if any(find(metho==[1,2]))
-  [yv,ysd] = predict(GPM,xv);
-end
-if metho==3
-  %   theta=[10.558888527436583;-0.204524413227546];
-  theta=[1;0];
-  pos_bond(theta(1),300)
-  exp(theta(2))
-  [yv,ysd] = my_fitrgp(xt,xv,tt,@kfcn,theta);
-end
-%% compare
-tv=sin(3*xv);
-rms(yv-tv)
+%% regression
+theta=[1;0];
+[~,A,W]=kfcn(1,1,theta)% for parameter display
+clear A W
+[val_y,val_ysd] = my_fitrgp(train_x,val_x,train_t,@kfcn,theta);
 %% figure
-close all
 figure
+plot(train_x,train_t,'*')
 hold on
-plot(xt,tt,'*')
-plot(xv,yv)
-% make closed patch
-px=[xv;flip(xv)]; 
-py=[yv+ysd; flip(yv-ysd)];
-patch(px,py,1,'FaceColor','black','FaceAlpha',.2,'EdgeColor','none');
+plotRealizations(val_x,val_y,val_ysd)
+title('1 stage prediction')
 

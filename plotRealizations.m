@@ -1,11 +1,13 @@
-function plotRealizations(x,y)
-nSample=size(y,2);
-yPred=y*ones([nSample,1])/nSample;
-ySD=sqrt(var(y,1,2));
+function plotRealizations(x,y,y_SD)
+if nargin == 2
+  y_SD=sqrt(var(y,1,2));
+end
+y_n=size(y,2);
+y_mean=y*ones([y_n,1])/y_n;
 
-px=[x;flip(x)]; 
-py=[yPred+ySD; flip(yPred-ySD)];
+patch_x=[x;flip(x)];
+patch_y=[y_mean+y_SD; flip(y_mean-y_SD)];
 
 hold on
-plot(x,yPred)
-patch(px,py,1,'FaceColor','black','FaceAlpha',.2,'EdgeColor','none');
+plot(x,y_mean)
+patch(patch_x,patch_y,1,'FaceColor','black','FaceAlpha',.2,'EdgeColor','none');
