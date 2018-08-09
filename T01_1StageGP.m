@@ -11,9 +11,11 @@ metho=3;
 % observation noise
 sigv=0;
 %% data
-M=10;
-xt=rand(M,1)*10;
-xt=sort(xt);
+M=5;
+% xt=rand(M,1)*10;
+% xt=sort(xt);
+xt=(1:M);
+xt=xt(:);
 tt=sin(3*xt)+randn(size(xt))*sigv;
 %% train
 parameter=[100,0];% initial parameter
