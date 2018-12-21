@@ -3,8 +3,8 @@ close all
 clc
 %% data generation
 % parameters
-para1 = [0,1];
-para2 = [0,-1];
+para1 = [0,0];
+para2 = [0,0];
 % generation process
 x = 0:0.01:10;
 x = x(:);

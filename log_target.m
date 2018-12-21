@@ -10,13 +10,12 @@ parfor i=1:N
   if isnan(K1)
     logW1=0;
   else
-%     logW1=logmvnpdf(z_c,xt*0,K1);
-    logW1=logmvnpdf(z_c,xt,K1);
+    logW1=logmvnpdf(z_c,xt*0,K1);
   end
   % second stage
   K2=kfcn(z_c,z_c,para2);
   K2=0.5*(K2+K2');
-  K2=K2+eye(length(xt))*1e-5;
+  K2=K2+eye(length(xt))*1e-10;
   logW2 = logmvnpdf(tt,tt*0,K2);
   % together
   logW(i)=logW1+logW2*temper;
