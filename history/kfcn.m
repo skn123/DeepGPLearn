@@ -1,4 +1,4 @@
-function [Kmn,A,W] = kfcn(Xm,Xn,theta) 
+function Kmn = kfcn(Xm,Xn,theta) 
 A=theta(1);
 A=pos_bond(A,300); % upper limit
 W=exp(theta(2));
