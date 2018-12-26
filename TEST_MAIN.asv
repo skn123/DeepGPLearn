@@ -21,13 +21,11 @@ temper_bounds=[0.2,1];
 % smaller bound gives fister convergence
 %% training data
 train_n = 2;
-% train_ind = randsample(length(x),train_n);
-train_ind = [1,100]
+train_ind = randsample(length(x),train_n);
 train_sigv = 0;
 train_x = x(train_ind);
 train_z = z(train_ind);
 train_t = y(train_ind);
-
 clear x y z train_ind
 
 K1 = kfcn(train_x,train_x,para1);
@@ -63,26 +61,38 @@ for i = z_n:-1:1
         z(:,i) = [];
     end
 end
+figure
+mvhist(z,5)
 % weight
-likelihood = @(z) exp(Pz_Given_x(train_x,z,K1) + Ly_Given_z(z,train_t,para2));
-p = likelihood(z);
+
+e = exp(1);
+
+log_traget = @(z) Pz_Given_x(train_x,z,K1) + Ly_Given_z(z,train_t,para2);
+p = log_traget(z);
 
 figure
 hold on
 plot3(z(1,:),z(2,:),p,'.')
 
-z_bestsample = z(:,p==max(p))
-logW = Ly_Given_z(z,train_t,para2);
-w = logw2w(logW);
-z = resample(z,w);
-z_med = median(z,2)
-z_estimation = mean(z,2)
-train_z
-
-plot3(train_z(1,1),train_z(2,1),likelihood(train_z),'o')
-plot3(z_bestsample(1,1),z_bestsample(2,1),likelihood(z_bestsample),'x')
-plot3(z_med(1,1),z_med(2,1),likelihood(z_med),'^')
-plot3(z_estimation(1,1),z_estimation(2,1),likelihood(z_estimation),'v')
+z_bestsample = z(:,w==max(p))
+if ESS(w)>0.3
+    logW = Ly_Given_z(z,train_t,para2);
+    w = logw2w(logW);
+    z = resample(z,w);
+    z_med = median(z,2)
+    z_estimation = mean(z,2)
+    
+    
+    Ly_Given_z(train_z,train_t,para2)
+    Ly_Given_z(z_bestsample,train_t,para2)
+    Ly_Given_z(z_med,train_t,para2)
+    Ly_Given_z(z_estimation,train_t,para2)
+    
+    plot3(train_z(1,1),train_z(2,1),e^Ly_Given_z(train_z,train_t,para2),'o')
+    plot3(z_bestsample(1,1),z_bestsample(2,1),e^Ly_Given_z(z_bestsample,train_t,para2),'rx')
+    plot3(z_med(1,1),z_med(2,1),e^Ly_Given_z(z_med,train_t,para2),'^')
+    plot3(z_estimation(1,1),z_estimation(2,1),e^Ly_Given_z(z_estimation,train_t,para2),'v')
+end
 return
 %% sequential IS-MH sample
 % init
