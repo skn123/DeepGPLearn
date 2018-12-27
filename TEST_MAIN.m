@@ -2,6 +2,10 @@ clear
 close all
 clc
 load('data.mat')
+if 0 % fake parameters
+    para1 = [0,-2];
+    papa2 = [0,-2];
+end
 addpath('..\matlab\Scripts_m\fun_MHSampling\')
 addpath('..\matlab\Scripts_m\ex_PMCMC\')
 
@@ -20,10 +24,10 @@ temper_bounds=[0.2,1];
 % bigger bounds gives smoother transition and thus better fit
 % smaller bound gives fister convergence
 %% training data
-RAND_DATA = 0;
+RAND_DATA = 1;
 x_n = length(x);
 if RAND_DATA
-    train_n = 8;
+    train_n = 2;
     train_ind = sort(randsample(length(x),train_n));
 else
     train_ind = 1:100:501;
@@ -132,3 +136,6 @@ for i = 1:z_n
 end
 plot(val_x, val_t)
 plot(val_x,mean(pred_t,2))
+
+%% fit with 1 GP
+GPM = fitrgp(train_x,train_t);
