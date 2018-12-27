@@ -110,12 +110,12 @@ else
     end
 end
 %% convert to upper triangle
-for i = z_n:-1:1
-    if z(1,i) > z(2,i)
-        z(:,i) = [];
-    end
-end
-z_n = size(z,2);
+% for i = z_n:-1:1
+%     if z(1,i) > z(2,i)
+%         z(:,i) = [];
+%     end
+% end
+% z_n = size(z,2);
 
 
 %% prediction
