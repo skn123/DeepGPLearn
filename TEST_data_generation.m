@@ -19,19 +19,19 @@ Az = chol(Kz,'lower');
 y = Az * randn(size(z));
 % visualization
 subplot(2,2,1)
-plot(x,z)
+plot(x,z,'b')
 xlabel('x')
 ylabel('z')
 subplot(2,2,4)
-plot(z,y)
+plot(z,y,'b')
 xlabel('z')
 ylabel('y')
 subplot(2,2,2)
-plot(y,z)
+plot(y,z,'b')
 xlabel('y')
 ylabel('z')
 subplot(2,2,3)
-plot(x,y)
+plot(x,y,'b')
 xlabel('x')
 ylabel('y')
 % save

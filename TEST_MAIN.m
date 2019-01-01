@@ -24,7 +24,7 @@ temper_bounds=[0.2,1];
 % bigger bounds gives smoother transition and thus better fit
 % smaller bound gives fister convergence
 %% training data
-RAND_DATA = 1;
+RAND_DATA = 0;
 x_n = length(x);
 if RAND_DATA
     train_n = 2;
@@ -107,7 +107,7 @@ else
         if temper == 1
             % if last run, run more iterations to assure convergence
             tic
-            z = MHSampling(log_traget_t,z','iter_n',metro_n*10)';
+            z = MHSampling(log_traget_t,z','iter_n',metro_n*3)';
             toc
             break
         end
@@ -120,7 +120,6 @@ end
 %     end
 % end
 % z_n = size(z,2);
-
 
 %% prediction
 pred_t = zeros(val_n,z_n);
@@ -136,6 +135,3 @@ for i = 1:z_n
 end
 plot(val_x, val_t)
 plot(val_x,mean(pred_t,2))
-
-%% fit with 1 GP
-GPM = fitrgp(train_x,train_t);
