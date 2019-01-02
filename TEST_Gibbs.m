@@ -27,10 +27,10 @@ temper_bounds=[0.2,1];
 RAND_DATA = 0;
 x_n = length(x);
 if RAND_DATA
-    train_n = 10;
+    train_n = 2;
     train_ind = sort(randsample(length(x),train_n));
 else
-    train_ind = 1:100:601;
+    train_ind = 1:100:501;
     train_n = length(train_ind);
 end
 train_x = x(train_ind); % train_n-by-1
@@ -55,15 +55,16 @@ K1 = K1+eye(length(train_x))*eps;
 
 % plot conditional
 gibbsn = 1000;
-gibbsburnin = 2000;
+gibbsburnin = 200;
 thinning = 10;
 gibbsz = zeros(train_n,1); % initial
 gibbssample = zeros(train_n,gibbsn); % memory allocation
-step = 0.1;
+step = 0.01;
 
 for gibbs_i = 1:gibbsn + gibbsburnin
     for gibbsd = 1:train_n
-        ISsamples = -3*sqrt(K1(gibbsd,gibbsd)):step:3*sqrt(K1(gibbsd,gibbsd));
+        [gibbsd_mu,gibbsd_sigx] = congau(zeros([train_n,1]),K1,gibbsz,gibbsd);
+        ISsamples = gibbsd_mu + (-3*sqrt(gibbsd_sigx):step:3*sqrt(gibbsd_sigx));
         ISsamples = ISsamples + rand(size(ISsamples)) * step;
         ISz = repmat(gibbsz,[1,length(ISsamples)]);
         ISz(gibbsd,:) = ISsamples;
@@ -75,9 +76,10 @@ for gibbs_i = 1:gibbsn + gibbsburnin
         gibbssample(:,gibbs_i-gibbsburnin) = gibbsz;
     end
 end
-% plot(gibbssample(1,:),gibbssample(2,:),'.')
+plot(gibbssample(1,:),gibbssample(2,:),'.')
 z = gibbssample(:,1:thinning:end);
 gibbssample_n = length(z);
+return
 %% prediction
 pred_t = zeros(val_n,gibbssample_n);
 pred_z = zeros(val_n,gibbssample_n);
