@@ -27,10 +27,10 @@ temper_bounds=[0.2,1];
 RAND_DATA = 0;
 x_n = length(x);
 if RAND_DATA
-    train_n = 3;
+    train_n = 10;
     train_ind = sort(randsample(length(x),train_n));
 else
-    train_ind = 1:100:501;
+    train_ind = 1:100:1001;
     train_n = length(train_ind);
 end
 train_x = x(train_ind); % train_n-by-1
@@ -54,79 +54,40 @@ K1 = K1+eye(length(train_x))*eps;
 [A,~] = chol(K1,'lower');
 
 % plot conditional
-
-gibbsz = train_z;
-ISsamples = -10:0.01:10;
+gibbsn = 1000;
+gibbsburnin = 1000;
+thinning = 10;
+gibbsz = zeros(train_n,1); % initial
+gibbssample = zeros(train_n,gibbsn); % memory allocation
+step = 0.1;
 hold on
-for gibbs_i = 1:1000
+for gibbs_i = 1:gibbsn + gibbsburnin
     for gibbsd = 1:train_n
+        ISsamples = -3*sqrt(K1(gibbsd,gibbsd)):step:3*sqrt(K1(gibbsd,gibbsd));
+        ISsamples = ISsamples + rand(size(ISsamples)) * step;
         ISz = repmat(gibbsz,[1,length(ISsamples)]);
         ISz(gibbsd,:) = ISsamples;
         logw = Pz_Given_x(train_x,ISz,K1)+Ly_Given_z(ISz,train_t,para2);
         ind = IS('logweights',logw,'sample_n',1);
         gibbsz(gibbsd)=ISsamples(ind);
     end
-    plot(gibbsz(1),gibbsz(2),'o')
-    pause(eps)
+    if gibbs_i > gibbsburnin
+        gibbssample(:,gibbs_i-gibbsburnin) = gibbsz;
+    end
 end
-return
-
-
-%% plot the prior
-if train_n == 2
-    [mesh_X,mesh_Y] = meshgrid(-10:0.1:10);
-    
-    Z_prior = reshape(Pz_Given_x(train_x,[mesh_X(:),mesh_Y(:)]',K1),size(mesh_X));
-    figure
-    mesh(mesh_X,mesh_Y,exp(Z_prior))
-    hidden off
-    %% plot the likelihood
-    Z_like = reshape(Ly_Given_z([mesh_X(:),mesh_Y(:)]',train_t,para2),size(mesh_X));
-    figure
-    mesh(mesh_X,mesh_Y,exp(Z_like))
-    hidden off
-    
-    %% plot the posterior
-    figure
-    mesh(mesh_X,mesh_Y,exp(Z_prior + Z_like))
-    hidden off
-end
-
-%% SA to find the peaks
-log_traget = @(z) - sum( Pz_Given_x(train_x,z,K1) + Ly_Given_z(z,train_t,para2));
-
-nSA = 70;
-zSA = zeros(train_n,nSA);
-fvalSA = zeros(1,nSA);
-options = optimoptions(@simulannealbnd,'FunctionTolerance',eps,'AnnealingFcn','annealingboltz');
-u = randn(train_n,nSA);
-zSA0 = A * u; % train_n-by-z_n
-parfor i = 1:nSA
-    [zSA(:,i),fvalSA(i)] = simulannealbnd(log_traget,zSA0(:,i),-10,10,options);
-end
-figure
-plot(zSA(1,:),zSA(2,:),'.')
-%% pick best of the bests
-zSA = zSA(:,fvalSA==min(fvalSA));
-zSA = repmat(zSA,[1,nSA]);
-%% HM sample start from the peak
-
-log_traget = @(z) Pz_Given_x(train_x,z,K1) + Ly_Given_z(z,train_t,para2);
-log_traget_t = @(z) log_traget(z')';
-z = MHSampling(log_traget_t,zSA','iter_n',1000,'adaptSig',0,'sig',0.2);
-z = z';
-figure
-plot(z(1,:),z(2,:),'.')
+% plot(gibbssample(1,:),gibbssample(2,:),'.')
+z = gibbssample(:,1:thinning:end);
+gibbssample_n = length(z);
 %% prediction
-pred_t = zeros(val_n,nSA);
-pred_z = zeros(val_n,nSA);
-parfor m = 1:nSA
+pred_t = zeros(val_n,gibbssample_n);
+pred_z = zeros(val_n,gibbssample_n);
+parfor m = 1:gibbssample_n
     pred_z(:,m) = my_fitrgp(train_x,val_x,z(:,m),@kfcn,para1)';
     pred_t(:,m) = my_fitrgp(z(:,m),pred_z(:,m),train_t,@kfcn,para2)';
 end
 figure
 hold on
-for i = 1:nSA
+for i = 1:gibbssample_n
     plot(val_x,pred_t(:,i),'.')
 end
 plot(val_x, val_t)
