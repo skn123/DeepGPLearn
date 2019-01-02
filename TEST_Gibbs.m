@@ -30,7 +30,7 @@ if RAND_DATA
     train_n = 2;
     train_ind = sort(randsample(length(x),train_n));
 else
-    train_ind = 1:100:501;
+    train_ind = 1:100:1001;
     train_n = length(train_ind);
 end
 train_x = x(train_ind); % train_n-by-1
@@ -53,13 +53,41 @@ K1 = kfcn(train_x,train_x,para1);
 K1 = K1+eye(length(train_x))*eps;
 [A,~] = chol(K1,'lower');
 
-% plot conditional
-gibbsn = 1000;
-gibbsburnin = 200;
+%% gibbs
 thinning = 10;
+gibbsn = 1000;
+chain = 7;
+z = zeros(train_n,gibbsn,chain);
+parfor c = 1:chain
+z(:,:,c) = gibbs(train_n,K1,train_x,train_t,para2,gibbsn);
+end
+z = reshape(z,[size(z,1),size(z,2)*size(z,3)]);
+plot(z(1,:),z(2,:),'.')
+z = z(:,1:thinning:end);
+gibbssample_n = length(z);
+%% prediction
+pred_t = zeros(val_n,gibbssample_n);
+pred_z = zeros(val_n,gibbssample_n);
+parfor m = 1:gibbssample_n
+    pred_z(:,m) = my_fitrgp(train_x,val_x,z(:,m),@kfcn,para1)';
+    pred_t(:,m) = my_fitrgp(z(:,m),pred_z(:,m),train_t,@kfcn,para2)';
+end
+figure
+hold on
+predmean = mean(pred_t,2);
+predstd = std(pred_t')';
+plot(val_x, val_t)
+plot(val_x,predmean)
+
+patch_x=[val_x;flip(val_x)];
+patch_y=[predmean+predstd; flip(predmean-predstd)];
+patch(patch_x,patch_y,1,'FaceColor','black','FaceAlpha',.2,'EdgeColor','none');
+
+function gibbssample = gibbs(train_n,K1,train_x,train_t,para2,gibbsn)
+gibbsburnin = 1000;
 gibbsz = zeros(train_n,1); % initial
 gibbssample = zeros(train_n,gibbsn); % memory allocation
-step = 0.01;
+step = 0.05;
 
 for gibbs_i = 1:gibbsn + gibbsburnin
     for gibbsd = 1:train_n
@@ -76,21 +104,4 @@ for gibbs_i = 1:gibbsn + gibbsburnin
         gibbssample(:,gibbs_i-gibbsburnin) = gibbsz;
     end
 end
-plot(gibbssample(1,:),gibbssample(2,:),'.')
-z = gibbssample(:,1:thinning:end);
-gibbssample_n = length(z);
-return
-%% prediction
-pred_t = zeros(val_n,gibbssample_n);
-pred_z = zeros(val_n,gibbssample_n);
-parfor m = 1:gibbssample_n
-    pred_z(:,m) = my_fitrgp(train_x,val_x,z(:,m),@kfcn,para1)';
-    pred_t(:,m) = my_fitrgp(z(:,m),pred_z(:,m),train_t,@kfcn,para2)';
 end
-figure
-hold on
-for i = 1:gibbssample_n
-    plot(val_x,pred_t(:,i),'.')
-end
-plot(val_x, val_t)
-plot(val_x,mean(pred_t,2))
