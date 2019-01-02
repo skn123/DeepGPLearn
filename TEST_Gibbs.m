@@ -30,7 +30,7 @@ if RAND_DATA
     train_n = 10;
     train_ind = sort(randsample(length(x),train_n));
 else
-    train_ind = 1:100:1001;
+    train_ind = 1:100:601;
     train_n = length(train_ind);
 end
 train_x = x(train_ind); % train_n-by-1
@@ -55,12 +55,12 @@ K1 = K1+eye(length(train_x))*eps;
 
 % plot conditional
 gibbsn = 1000;
-gibbsburnin = 1000;
+gibbsburnin = 2000;
 thinning = 10;
 gibbsz = zeros(train_n,1); % initial
 gibbssample = zeros(train_n,gibbsn); % memory allocation
 step = 0.1;
-hold on
+
 for gibbs_i = 1:gibbsn + gibbsburnin
     for gibbsd = 1:train_n
         ISsamples = -3*sqrt(K1(gibbsd,gibbsd)):step:3*sqrt(K1(gibbsd,gibbsd));
