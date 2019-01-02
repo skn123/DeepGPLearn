@@ -27,7 +27,7 @@ temper_bounds=[0.2,1];
 RAND_DATA = 1;
 x_n = length(x);
 if RAND_DATA
-    train_n = 20;
+    train_n = 10;
     train_ind = sort(randsample(length(x),train_n));
 else
     train_ind = 1:100:501;
@@ -93,7 +93,7 @@ zSA = repmat(zSA,[1,nSA]);
 
 log_traget = @(z) Pz_Given_x(train_x,z,K1) + Ly_Given_z(z,train_t,para2);
 log_traget_t = @(z) log_traget(z')';
-z = MHSampling(log_traget_t,zSA','iter_n',1000,'adaptSig',0,'sig',0.2);
+z = MHSampling(log_traget_t,zSA','iter_n',10000,'adaptSig',0,'sig',0.01);
 z = z';
 figure
 plot(z(1,:),z(2,:),'.')
