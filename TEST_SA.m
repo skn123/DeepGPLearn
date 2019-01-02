@@ -27,7 +27,7 @@ temper_bounds=[0.2,1];
 RAND_DATA = 1;
 x_n = length(x);
 if RAND_DATA
-    train_n = 3;
+    train_n = 20;
     train_ind = sort(randsample(length(x),train_n));
 else
     train_ind = 1:100:501;
@@ -78,16 +78,36 @@ log_traget = @(z) - sum( Pz_Given_x(train_x,z,K1) + Ly_Given_z(z,train_t,para2))
 nSA = 70;
 zSA = zeros(train_n,nSA);
 fvalSA = zeros(1,nSA);
+options = optimoptions(@simulannealbnd,'FunctionTolerance',eps,'AnnealingFcn','annealingboltz');
+u = randn(train_n,nSA);
+zSA0 = A * u; % train_n-by-z_n
 parfor i = 1:nSA
-    zSA0 = randn(train_n,1);   % Starting point
-    [zSA(:,i),fvalSA(i)] = simulannealbnd(log_traget,zSA0);
+    [zSA(:,i),fvalSA(i)] = simulannealbnd(log_traget,zSA0(:,i),-10,10,options);
 end
-
-%% HM sample start from the peak
 figure
 plot(zSA(1,:),zSA(2,:),'.')
+%% pick best of the bests
+zSA = zSA(:,fvalSA==min(fvalSA));
+zSA = repmat(zSA,[1,nSA]);
+%% HM sample start from the peak
+
 log_traget = @(z) Pz_Given_x(train_x,z,K1) + Ly_Given_z(z,train_t,para2);
 log_traget_t = @(z) log_traget(z')';
-z = MHSampling(log_traget_t,zSA','iter_n',10000,'adaptSig',0,'sig',0.1);
+z = MHSampling(log_traget_t,zSA','iter_n',1000,'adaptSig',0,'sig',0.2);
+z = z';
 figure
-plot(z(:,1),z(:,2),'.')
+plot(z(1,:),z(2,:),'.')
+%% prediction
+pred_t = zeros(val_n,nSA);
+pred_z = zeros(val_n,nSA);
+parfor m = 1:nSA
+    pred_z(:,m) = my_fitrgp(train_x,val_x,z(:,m),@kfcn,para1)';
+    pred_t(:,m) = my_fitrgp(z(:,m),pred_z(:,m),train_t,@kfcn,para2)';
+end
+figure
+hold on
+for i = 1:nSA
+    plot(val_x,pred_t(:,i),'.')
+end
+plot(val_x, val_t)
+plot(val_x,mean(pred_t,2))
