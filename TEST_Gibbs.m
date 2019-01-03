@@ -74,7 +74,7 @@ parfor m = 1:gibbssample_n
 end
 predmean = mean(pred_t,2);
 predstd = std(pred_t')';
-RMSE = rms(predmean(round(end):end) - val_t(round(end):end));
+RMSE = rms(predmean - val_t);
 %% plot
 figure
 hold on
