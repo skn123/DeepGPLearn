@@ -72,10 +72,12 @@ parfor m = 1:gibbssample_n
     pred_z(:,m) = my_fitrgp(train_x,val_x,z(:,m),@kfcn,para1)';
     pred_t(:,m) = my_fitrgp(z(:,m),pred_z(:,m),train_t,@kfcn,para2)';
 end
-figure
-hold on
 predmean = mean(pred_t,2);
 predstd = std(pred_t')';
+RMSE = rms(predmean(round(end):end) - val_t(round(end):end));
+%% plot
+figure
+hold on
 plot(val_x, val_t)
 plot(val_x,predmean)
 
